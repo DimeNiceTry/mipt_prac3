@@ -1,0 +1,53 @@
+- name: Install nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+    install_recommends: false
+    policy_rc_d: 101
+
+- name: Configure nginx
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/nginx -t -c %s
+  notify: Restart nginx
+
+- name: Configure nginx process
+  ansible.builtin.template:
+    src: supervisor.conf.j2
+    dest: /etc/supervisor/conf.d/nginx.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart nginx
+
+- name: Start process manager
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: start_supervisor
+
+- name: Apply nginx changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Check nginx process
+  ansible.builtin.command: supervisorctl status nginx
+  register: nginx_status
+  changed_when: false
+  failed_when: false
+
+- name: Start nginx if stopped
+  ansible.builtin.command: supervisorctl start nginx
+  when: "'RUNNING' not in nginx_status.stdout"
+
+- name: Check proxy health
+  ansible.builtin.uri:
+    url: http://127.0.0.1/health
+    status_code: 200
+    return_content: true
+  register: nginx_health
+  until: nginx_health.status == 200
+  retries: 15
+  delay: 2

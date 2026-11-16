@@ -1,0 +1,4 @@
+app_name: "Lab 3: Notes"
+app_port: 8080
+nginx_upstream_host: app
+nginx_upstream_port: "{{ app_port }}"

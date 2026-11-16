@@ -1,0 +1,11 @@
+- name: Read application process configuration
+  ansible.builtin.command: supervisorctl reread
+  listen: Restart notes
+
+- name: Apply application process configuration
+  ansible.builtin.command: supervisorctl update
+  listen: Restart notes
+
+- name: Restart application
+  ansible.builtin.command: supervisorctl restart notes
+  listen: Restart notes

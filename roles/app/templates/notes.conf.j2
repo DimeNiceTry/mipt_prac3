@@ -1,0 +1,11 @@
+[program:notes]
+command={{ app_root }}/start.sh
+directory={{ app_root }}/current
+user={{ app_user }}
+autostart=true
+autorestart=true
+startsecs=1
+stopasgroup=true
+killasgroup=true
+stdout_logfile=/var/log/supervisor/notes.log
+stderr_logfile=/var/log/supervisor/notes-error.log

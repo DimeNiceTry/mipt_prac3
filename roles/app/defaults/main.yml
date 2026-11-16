@@ -1,0 +1,5 @@
+app_name: "Lab 3: Notes"
+app_port: 8080
+app_user: notes
+app_root: /opt/notes
+app_data: /var/lib/notes
