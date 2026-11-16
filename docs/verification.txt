@@ -1,0 +1,7 @@
+First deployment
+app                        : ok=25   changed=16   unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+nginx                      : ok=14   changed=8    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+
+Second run (idempotence)
+app                        : ok=20   changed=0    unreachable=0    failed=0    skipped=3    rescued=0    ignored=0   
+nginx                      : ok=10   changed=0    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   

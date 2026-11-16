@@ -1,0 +1,20 @@
+- name: Check server configuration
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] == 'Debian'
+      - ansible_facts['distribution_major_version'] == '12'
+      - ansible_facts['python']['version']['major'] == 3
+      - ansible_facts['memtotal_mb'] >= 128
+    fail_msg: This playbook expects Debian 12 with Python 3.
+
+- name: Install common packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - supervisor
+      - tar
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+    install_recommends: false
+    policy_rc_d: 101

@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+set -a
+. /etc/notes.env
+set +a
+cd {{ (app_root + '/current') | quote }}
+exec .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port {{ app_port }}

@@ -1,0 +1,16 @@
+- name: Prepare servers
+  hosts: managed
+  roles:
+    - common
+
+- name: Deploy notes
+  hosts: app_servers
+  gather_facts: false
+  roles:
+    - app
+
+- name: Configure reverse proxy
+  hosts: web_servers
+  gather_facts: false
+  roles:
+    - nginx

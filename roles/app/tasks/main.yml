@@ -1,0 +1,140 @@
+- name: Check application settings
+  ansible.builtin.assert:
+    that:
+      - app_port | int > 1024
+      - app_port | int < 65536
+      - app_root.startswith('/')
+
+- name: Install Python tools
+  ansible.builtin.apt:
+    name:
+      - python3-venv
+      - python3-pip
+    state: present
+    install_recommends: false
+    policy_rc_d: 101
+
+- name: Create application user
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    uid: 10001
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: Prepare application directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ app_root }}"
+    - "{{ app_root }}/releases"
+
+- name: Prepare database directory
+  ansible.builtin.file:
+    path: "{{ app_data }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0750"
+
+- name: Package application on master
+  ansible.builtin.command: python /workspace/scripts/package.py
+  delegate_to: localhost
+  register: app_package
+  changed_when: false
+
+- name: Select release directory
+  ansible.builtin.set_fact:
+    app_release_dir: "{{ app_root }}/releases/{{ app_package.stdout }}"
+
+- name: Create release directory
+  ansible.builtin.file:
+    path: "{{ app_release_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Unpack application
+  ansible.builtin.unarchive:
+    src: /tmp/notes.tar.gz
+    dest: "{{ app_release_dir }}"
+    creates: "{{ app_release_dir }}/app/main.py"
+    owner: root
+    group: root
+
+- name: Install application dependencies
+  ansible.builtin.pip:
+    requirements: "{{ app_release_dir }}/requirements.txt"
+    virtualenv: "{{ app_release_dir }}/.venv"
+    virtualenv_command: /usr/bin/python3 -m venv
+    extra_args: "--require-hashes --only-binary=:all: --disable-pip-version-check"
+  environment:
+    PIP_DEFAULT_TIMEOUT: "120"
+    PIP_NO_CACHE_DIR: "1"
+
+- name: Set current release
+  ansible.builtin.file:
+    src: "{{ app_release_dir }}"
+    dest: "{{ app_root }}/current"
+    state: link
+  notify: Restart notes
+
+- name: Configure application environment
+  ansible.builtin.template:
+    src: app.env.j2
+    dest: /etc/notes.env
+    owner: root
+    group: "{{ app_user }}"
+    mode: "0640"
+  notify: Restart notes
+
+- name: Install launch script
+  ansible.builtin.template:
+    src: start.sh.j2
+    dest: "{{ app_root }}/start.sh"
+    owner: root
+    group: root
+    mode: "0755"
+    validate: /bin/sh -n %s
+  notify: Restart notes
+
+- name: Configure application process
+  ansible.builtin.template:
+    src: notes.conf.j2
+    dest: /etc/supervisor/conf.d/notes.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart notes
+
+- name: Start process manager
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: start_supervisor
+
+- name: Apply application changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Check application process
+  ansible.builtin.command: supervisorctl status notes
+  register: app_status
+  changed_when: false
+  failed_when: false
+
+- name: Start application if stopped
+  ansible.builtin.command: supervisorctl start notes
+  when: "'RUNNING' not in app_status.stdout"
+
+- name: Check application health
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ app_port }}/health"
+    status_code: 200
+    return_content: true
+  register: app_health
+  until: app_health.status == 200
+  retries: 15
+  delay: 2

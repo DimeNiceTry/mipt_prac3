@@ -1,0 +1,2 @@
+nginx_upstream_host: app
+nginx_upstream_port: 8080

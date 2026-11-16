@@ -1,0 +1,9 @@
+- name: Check Supervisor
+  ansible.builtin.command: supervisorctl pid
+  register: supervisor_pid
+  changed_when: false
+  failed_when: false
+
+- name: Start Supervisor
+  ansible.builtin.command: supervisord -c /etc/supervisor/supervisord.conf
+  when: supervisor_pid.rc != 0
